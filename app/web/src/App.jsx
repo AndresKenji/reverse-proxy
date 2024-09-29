@@ -4,9 +4,9 @@ import { Home } from './views/home/Home'
 function App() {
 
   return (
-    <>
-    <Home/>
-    </>
+    <div className='container'>
+    <Home/>      
+    </div>
   )
 }
 

@@ -16,6 +16,12 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PWD}
     volumes:
       - ./db-data/mongo/:/data/db
+    healthcheck:
+      test: ["CMD","mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   mongo-express:
     image: mongo-express:latest
@@ -31,3 +37,25 @@ services:
       - 8081:8081
     depends_on:
       - mongodb
+  
+  reverse-proxy:
+    container_name: reverse-proxy-server
+    env_file: local.env
+    ports: 
+      - "8080:8080"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+        restart: true
+    build:
+      context: .
+      args:
+        - port=${port}
+        - mongo_user=${mongo_user}
+        - mongo_pwd=${mongo_pwd}
+        - mongo_url=${mongo_url}
+        - mongo_port=${mongo_port}
+        - mongo_db=${mongo_db}
+      dockerfile: Dockerfile
+
+  
