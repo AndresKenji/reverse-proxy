@@ -51,7 +51,7 @@ func (s *Server) SetServerMux(cfgFile *config.ConfigFile) {
 		w.Write([]byte("Server listening"))
 	})
 	mux.HandleFunc("/restart",func(w http.ResponseWriter, r *http.Request) {
-		s.RestartChan <- true
+		s.RestartServer()
 		w.Write([]byte("Restart signal sent"))
 	})
 	
@@ -176,4 +176,9 @@ func (s *Server) DeleteConfig(filter bson.D) ( *mongo.DeleteResult, error) {
 
 func (s *Server) SetDefaultConfig() *config.ConfigFile {
 	return config.DefaultConfig()
+}
+
+// RestartServer send a true on the restart server channerl
+func (s *Server) RestartServer() {
+	s.RestartChan <- true
 }
