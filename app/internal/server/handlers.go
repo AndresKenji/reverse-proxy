@@ -3,6 +3,8 @@ package server
 import (
 	"encoding/json"
 	"net/http"
+	"strings"
+	"time"
 
 	"github.com/AndresKenji/reverse-proxy/internal/config"
 	"go.mongodb.org/mongo-driver/bson"
@@ -114,4 +116,94 @@ func (s *Server) UpdateConfigHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
     w.Write([]byte("Document updated successfully"))
+}
+
+
+func (s *Server) GetEndpointHandler(w http.ResponseWriter, r *http.Request) {
+	prefix := r.URL.Query().Get("prefix")
+	if prefix == "" {
+		http.Error(w, "Prefix is required", http.StatusBadRequest)
+		return
+	}
+	config, err := s.GetLatestConfig()
+	if err != nil {
+		http.Error(w,err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	for _, endpoint := range config.Endpoints {
+		if strings.ReplaceAll(endpoint.Prefix, "/","") == strings.ReplaceAll(prefix, "/","") {
+			w.Header().Set("Content-type","application/json")
+			w.WriteHeader(http.StatusOK)
+			err := json.NewEncoder(w).Encode(endpoint)
+			if err != nil {
+				http.Error(w, "Serialize object error", http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+	http.Error(w, "Endpoint not found", http.StatusNotFound)
+}
+
+func (s *Server) DeleteEndpointHandler(w http.ResponseWriter, r *http.Request) {
+	prefix := r.URL.Query().Get("prefix")
+	if prefix == "" {
+		http.Error(w, "Prefix is required", http.StatusBadRequest)
+		return
+	}
+	config, err := s.GetLatestConfig()
+	if err != nil {
+		http.Error(w,err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	config.RemoveEndpointByPrefix(prefix)
+
+	
+	http.Error(w, "Endpoint not found", http.StatusNotFound)
+}
+
+func (s *Server) SetEndpointHandler(w http.ResponseWriter, r *http.Request) {
+	var newEndpoint config.Config
+	config, err := s.GetLatestConfig()
+	if err != nil {
+		http.Error(w,err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+    err = json.NewDecoder(r.Body).Decode(&newEndpoint)
+    if err != nil {
+        http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+        return
+    }
+
+    if newEndpoint.Prefix == "" {
+        http.Error(w, "Prefix is required", http.StatusBadRequest)
+        return
+    }
+
+	for i, endpoint := range config.Endpoints {
+		if endpoint.Prefix == newEndpoint.Prefix {
+			config.Endpoints[i] = newEndpoint
+			err = s.SaveConfig(config)
+			if err != nil {
+				http.Error(w,err.Error(),http.StatusInternalServerError)
+				return
+			}
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+	}
+
+	config.Endpoints = append(config.Endpoints, newEndpoint)
+	config.CreatedAt = time.Now()
+	err = s.SaveConfig(config)
+	if err != nil {
+		http.Error(w,err.Error(),http.StatusInternalServerError)
+		return
+	}
+    w.WriteHeader(http.StatusCreated)
+    w.Header().Set("Content-Type", "application/json")
+    json.NewEncoder(w).Encode(config)
+
 }

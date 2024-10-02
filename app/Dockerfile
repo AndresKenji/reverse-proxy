@@ -11,6 +11,16 @@ RUN go mod download
 RUN go build -v -o reverseproxy ./cmd/main.go
 RUN chmod +x /app/reverseproxy
 
+# Etapa 2 compilar app de react 
+
+FROM node:18-alpine as front
+WORKDIR /app
+COPY /web/ .
+RUN npm install
+RUN npm i -g serve
+RUN npm run build
+
+
 # Crear una imagen más pequeña solo con el binario
 FROM alpine:latest
 
@@ -35,9 +45,9 @@ ENV TZ=America/Bogota
 RUN mkdir /app
 RUN apk update
 
-COPY --from=builder /app/reverseproxy /app/reverseproxy
-COPY /web/dist /app/web
 COPY config.json /app/config.json
+COPY --from=builder /app/reverseproxy /app/reverseproxy
+COPY --from=front /app/dist /app/web
 
 EXPOSE 80
 

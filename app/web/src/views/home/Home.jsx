@@ -1,5 +1,4 @@
 import { ConfigData } from "./components/ConfigData"
-import { Footer } from "./components/Footer"
 import { Navbar } from "./components/Navbar"
 
 export const Home = () => {
@@ -8,7 +7,6 @@ export const Home = () => {
     <>
     <Navbar/>
     <ConfigData/>
-    <Footer/>
     </>
   )
 }

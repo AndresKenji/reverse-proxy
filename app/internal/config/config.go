@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/AndresKenji/reverse-proxy/internal/handlers"
@@ -102,4 +103,15 @@ func isMethodAllowed(method string, allowedMethods []string) bool {
         }
     }
     return false
+}
+
+// RemoveEndpointByPrefix Method to remove an endpoint based on its Prefix
+func (cf *ConfigFile) RemoveEndpointByPrefix(prefix string) {
+	for i, endpoint := range cf.Endpoints {
+		if strings.ReplaceAll(endpoint.Prefix, "/","") == strings.ReplaceAll(prefix, "/","") {
+			// Remove the element at index i
+			cf.Endpoints = append(cf.Endpoints[:i], cf.Endpoints[i+1:]...)
+			return
+		}
+	}
 }

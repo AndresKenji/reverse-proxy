@@ -57,10 +57,11 @@ func (s *Server) SetServerMux(cfgFile *config.ConfigFile) {
 	
 	fs := http.FileServer(http.Dir("/app/web"))
     mux.Handle("/admin/", http.StripPrefix("/admin", fs))
-
 	mux.Handle("GET /admin/config", chain(http.HandlerFunc(s.GetConfigsHandler)))
-	mux.Handle("POST /admin/config", middleware.CORSMiddleware(http.HandlerFunc(s.SaveConfigHandler)))
-
+	mux.Handle("POST /admin/config", chain(http.HandlerFunc(http.HandlerFunc(s.SaveConfigHandler))))
+	mux.Handle("GET /admin/config/endpoint", chain(http.HandlerFunc(s.GetEndpointHandler)))
+	mux.Handle("POST /admin/config/endpoint", chain(http.HandlerFunc(http.HandlerFunc(s.SetEndpointHandler))))
+	
 	for _, cfg := range cfgFile.Endpoints {
 		mux.Handle(cfg.Prefix, chain(cfg.GenerateProxyHandler()))
 	}
