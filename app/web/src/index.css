@@ -1,3 +1,17 @@
 body{
-    background-color: #a5a5a5;
+    background-color: #EDEDED;
+}
+
+.delete-btn {
+    
+}
+.delete-btn:hover {
+    cursor: pointer;
+    color: red;
+}
+
+
+.save-btn:hover {
+    background-color: rgb(28, 28, 219);
+    color: white;
 }

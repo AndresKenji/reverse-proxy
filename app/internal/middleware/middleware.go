@@ -2,8 +2,12 @@ package middleware
 
 import (
 	"log"
+	"fmt"
 	"net/http"
 	"time"
+
+	"github.com/AndresKenji/reverse-proxy/internal/models"
+	"github.com/AndresKenji/reverse-proxy/internal/util"
 )
 
 type Middleware func(next http.Handler) http.Handler
@@ -14,7 +18,29 @@ type Middleware func(next http.Handler) http.Handler
 func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
+
 		next.ServeHTTP(w, r)
+
+		// Recuperar la URL de destino del contexto (si fue establecida por el reverse proxy)
+		targetURL, ok := r.Context().Value("target_url").(string)
+		if !ok {
+			// Si no hay `target_url`, usamos la URL solicitada originalmente
+			scheme := "http"
+			if r.TLS != nil {
+				scheme = "https"
+			}
+			targetURL = fmt.Sprintf("%s://%s%s", scheme, r.Host, r.URL.RequestURI())
+		}
+		logEntry := models.LogEntry{
+			Timestamp:  time.Now().UTC(),
+			RemoteAddr: r.RemoteAddr,
+			Method:     r.Method,
+			Path:       r.URL.Path,
+			Proto:      r.Proto,
+			TargetURL:  targetURL,
+			Duration:   time.Since(start).String(),
+		}
+		go util.SendLogToElasticsearch(logEntry, "api_gateway")
 		log.Printf("%s - %s %s %s %v", r.Method, r.RemoteAddr, r.URL.Path, r.Proto, time.Since(start))
 	})
 }
@@ -64,8 +90,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 }
 
 var MiddlewaresList = map[string]Middleware{
-"CORS": CORSMiddleware,
-"Logger": RequestLoggerMiddleware,
-"Auth":   RequireAuthMiddleware,
+	"CORS":   CORSMiddleware,
+	"Logger": RequestLoggerMiddleware,
+	"Auth":   RequireAuthMiddleware,
 }
-
