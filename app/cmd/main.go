@@ -7,7 +7,6 @@ import (
 
 	"github.com/AndresKenji/reverse-proxy/internal/config"
 	"github.com/AndresKenji/reverse-proxy/internal/server"
-	"log"
 )
 
 func main() {
