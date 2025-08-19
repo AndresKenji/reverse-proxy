@@ -18,6 +18,7 @@ type Config struct {
 	Secure           bool              `json:"secure" bson:"secure"`
 	AllowedMethods   []string          `json:"allowed_methods" bson:"allowed_methods"`
 	AllowedIps       []string          `json:"allowed_ips" bson:"allowed_ips"`
+	IsWebSocket      bool              `json:"is_websocket,omitempty" bson:"is_websocket,omitempty"`
 }
 
 type ConfigFile struct {
@@ -30,18 +31,18 @@ func (c *Config) GenerateProxyHandler() http.HandlerFunc {
 	log.Println("Creating Handler for ", c.Prefix)
 
 	return func(w http.ResponseWriter, r *http.Request) {
-		 // Verificar si la IP está permitida
-		 clientIP := r.RemoteAddr
-		 if !isIPAllowed(clientIP, c.AllowedIps) {
-			 http.Error(w, "Access Denied", http.StatusForbidden)
-			 return
-		 }
- 
-		 // Verificar si el método está permitido
-		 if !isMethodAllowed(r.Method, c.AllowedMethods) {
-			 http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-			 return
-		 }
+		// Verificar si la IP está permitida
+		clientIP := r.RemoteAddr
+		if !isIPAllowed(clientIP, c.AllowedIps) {
+			http.Error(w, "Access Denied", http.StatusForbidden)
+			return
+		}
+
+		// Verificar si el método está permitido
+		if !isMethodAllowed(r.Method, c.AllowedMethods) {
+			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
+			return
+		}
 		hi := r.Header.Get(c.HeaderIdentifier)
 		url, exist := c.BackendUrls[hi]
 		if exist {
@@ -83,32 +84,32 @@ func DefaultConfig() *ConfigFile {
 
 // isIPAllowed Verifica si la IP está permitida
 func isIPAllowed(clientIP string, allowedIPs []string) bool {
-    if allowedIPs[0] == "*" {
-        return true
-    }
-    
-    for _, allowed := range allowedIPs {
-        if allowed == clientIP {
-            return true
-        }
-    }
-    return false
+	if allowedIPs[0] == "*" {
+		return true
+	}
+
+	for _, allowed := range allowedIPs {
+		if allowed == clientIP {
+			return true
+		}
+	}
+	return false
 }
 
 // isMethodAllowed Verifica si el método está permitido
 func isMethodAllowed(method string, allowedMethods []string) bool {
-    for _, allowed := range allowedMethods {
-        if allowed == "*" || allowed == method {
-            return true
-        }
-    }
-    return false
+	for _, allowed := range allowedMethods {
+		if allowed == "*" || allowed == method {
+			return true
+		}
+	}
+	return false
 }
 
 // RemoveEndpointByPrefix Method to remove an endpoint based on its Prefix
 func (cf *ConfigFile) RemoveEndpointByPrefix(prefix string) {
 	for i, endpoint := range cf.Endpoints {
-		if strings.ReplaceAll(endpoint.Prefix, "/","") == strings.ReplaceAll(prefix, "/","") {
+		if strings.ReplaceAll(endpoint.Prefix, "/", "") == strings.ReplaceAll(prefix, "/", "") {
 			// Remove the element at index i
 			cf.Endpoints = append(cf.Endpoints[:i], cf.Endpoints[i+1:]...)
 			return

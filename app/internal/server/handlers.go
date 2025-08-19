@@ -10,7 +10,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-
 func (s *Server) GetConfigsHandler(w http.ResponseWriter, r *http.Request) {
 	filter := r.URL.Query().Get("filter")
 	if filter == "latest" {
@@ -60,64 +59,63 @@ func (s *Server) SaveConfigHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) DeleteConfigHandler(w http.ResponseWriter, r *http.Request) {
-    
-    // Extraer el ID de la URL
-    id := r.URL.Query().Get("id")
-    if id == "" {
-        http.Error(w, "ID is required", http.StatusBadRequest)
-        return
-    }
-    
-    // Eliminar el documento
-    filter := bson.D{{Key: "id", Value: id}}
+
+	// Extraer el ID de la URL
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "ID is required", http.StatusBadRequest)
+		return
+	}
+
+	// Eliminar el documento
+	filter := bson.D{{Key: "id", Value: id}}
 	result, err := s.DeleteConfig(filter)
 	if err != nil {
-        http.Error(w, "Failed to delete document", http.StatusInternalServerError)
-        return
-    }
+		http.Error(w, "Failed to delete document", http.StatusInternalServerError)
+		return
+	}
 	if result.DeletedCount == 0 {
-        http.Error(w, "No document found with the given ID", http.StatusNotFound)
-        return
-    }
+		http.Error(w, "No document found with the given ID", http.StatusNotFound)
+		return
+	}
 
-    w.WriteHeader(http.StatusOK)
-    w.Write([]byte("Document deleted successfully"))
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Document deleted successfully"))
 }
 
 func (s *Server) UpdateConfigHandler(w http.ResponseWriter, r *http.Request) {
-	 // Extraer el ID de la URL
-	 id := r.URL.Query().Get("id")
-	 if id == "" {
-		 http.Error(w, "ID is required", http.StatusBadRequest)
-		 return
+	// Extraer el ID de la URL
+	id := r.URL.Query().Get("id")
+	if id == "" {
+		http.Error(w, "ID is required", http.StatusBadRequest)
+		return
 	}
 	var updatedConfig config.Config
-    err := json.NewDecoder(r.Body).Decode(&updatedConfig)
-    if err != nil {
-        http.Error(w, "Failed to parse request body", http.StatusBadRequest)
-        return
-    }
+	err := json.NewDecoder(r.Body).Decode(&updatedConfig)
+	if err != nil {
+		http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+		return
+	}
 	update := bson.D{
-        {Key: "$set", Value: bson.D{
-            {Key: "prefix", Value: updatedConfig.Prefix},
-            {Key: "header_identifier", Value: updatedConfig.HeaderIdentifier},
-            {Key: "backend_urls", Value: updatedConfig.BackendUrls},
-            {Key: "secure", Value: updatedConfig.Secure},
-        }},
-    }
-	 
+		{Key: "$set", Value: bson.D{
+			{Key: "prefix", Value: updatedConfig.Prefix},
+			{Key: "header_identifier", Value: updatedConfig.HeaderIdentifier},
+			{Key: "backend_urls", Value: updatedConfig.BackendUrls},
+			{Key: "secure", Value: updatedConfig.Secure},
+		}},
+	}
+
 	// Eliminar el documento
 	filter := bson.D{{Key: "id", Value: id}}
 	err = s.UpdateConfig(filter, update)
 	if err != nil {
-        http.Error(w, "Failed to update document", http.StatusInternalServerError)
-        return
-    }
+		http.Error(w, "Failed to update document", http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusOK)
-    w.Write([]byte("Document updated successfully"))
+	w.Write([]byte("Document updated successfully"))
 }
-
 
 func (s *Server) GetEndpointHandler(w http.ResponseWriter, r *http.Request) {
 	prefix := r.URL.Query().Get("prefix")
@@ -127,13 +125,13 @@ func (s *Server) GetEndpointHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	config, err := s.GetLatestConfig()
 	if err != nil {
-		http.Error(w,err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	for _, endpoint := range config.Endpoints {
-		if strings.ReplaceAll(endpoint.Prefix, "/","") == strings.ReplaceAll(prefix, "/","") {
-			w.Header().Set("Content-type","application/json")
+		if strings.ReplaceAll(endpoint.Prefix, "/", "") == strings.ReplaceAll(prefix, "/", "") {
+			w.Header().Set("Content-type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			err := json.NewEncoder(w).Encode(endpoint)
 			if err != nil {
@@ -153,13 +151,12 @@ func (s *Server) DeleteEndpointHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	config, err := s.GetLatestConfig()
 	if err != nil {
-		http.Error(w,err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	config.RemoveEndpointByPrefix(prefix)
 
-	
 	http.Error(w, "Endpoint not found", http.StatusNotFound)
 }
 
@@ -167,27 +164,27 @@ func (s *Server) SetEndpointHandler(w http.ResponseWriter, r *http.Request) {
 	var newEndpoint config.Config
 	config, err := s.GetLatestConfig()
 	if err != nil {
-		http.Error(w,err.Error(), http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-    err = json.NewDecoder(r.Body).Decode(&newEndpoint)
-    if err != nil {
-        http.Error(w, "Invalid JSON format", http.StatusBadRequest)
-        return
-    }
+	err = json.NewDecoder(r.Body).Decode(&newEndpoint)
+	if err != nil {
+		http.Error(w, "Invalid JSON format", http.StatusBadRequest)
+		return
+	}
 
-    if newEndpoint.Prefix == "" {
-        http.Error(w, "Prefix is required", http.StatusBadRequest)
-        return
-    }
+	if newEndpoint.Prefix == "" {
+		http.Error(w, "Prefix is required", http.StatusBadRequest)
+		return
+	}
 
 	for i, endpoint := range config.Endpoints {
 		if endpoint.Prefix == newEndpoint.Prefix {
 			config.Endpoints[i] = newEndpoint
 			err = s.SaveConfig(config)
 			if err != nil {
-				http.Error(w,err.Error(),http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			w.WriteHeader(http.StatusCreated)
@@ -199,11 +196,11 @@ func (s *Server) SetEndpointHandler(w http.ResponseWriter, r *http.Request) {
 	config.CreatedAt = time.Now()
 	err = s.SaveConfig(config)
 	if err != nil {
-		http.Error(w,err.Error(),http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-    w.WriteHeader(http.StatusCreated)
-    w.Header().Set("Content-Type", "application/json")
-    json.NewEncoder(w).Encode(config)
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(config)
 
 }

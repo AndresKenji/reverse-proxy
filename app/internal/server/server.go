@@ -15,10 +15,10 @@ import (
 )
 
 type Server struct {
-	Port     string
-	Mux      *http.ServeMux
-	Context  context.Context
-	Database *database.Database
+	Port        string
+	Mux         *http.ServeMux
+	Context     context.Context
+	Database    *database.Database
 	RestartChan chan bool
 }
 
@@ -41,37 +41,37 @@ func NewServer(ctx context.Context, restart chan bool) *Server {
 func (s *Server) SetServerMux(cfgFile *config.ConfigFile) {
 	mux := http.NewServeMux()
 
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("Server listening"))
+	})
+	mux.HandleFunc("/restart", func(w http.ResponseWriter, r *http.Request) {
+		s.RestartChan <- true
+		w.Write([]byte("Restart signal sent"))
+	})
+
+	fs := http.FileServer(http.Dir("/app/web"))
+	mux.Handle("/admin/", http.StripPrefix("/admin", fs))
+	mux.Handle("GET /admin/config", http.HandlerFunc(s.GetConfigsHandler))
+	mux.Handle("POST /admin/config", http.HandlerFunc(http.HandlerFunc(s.SaveConfigHandler)))
+	mux.Handle("GET /admin/config/endpoint", http.HandlerFunc(s.GetEndpointHandler))
+	mux.Handle("POST /admin/config/endpoint", http.HandlerFunc(http.HandlerFunc(s.SetEndpointHandler)))
+
+	for _, cfg := range cfgFile.Endpoints {
+		mux.Handle(cfg.Prefix, cfg.GenerateProxyHandler())
+	}
+	s.Mux = mux
+}
+
+func (s *Server) StartServer() error {
 	// Middleware Chain
 	chain := middleware.MiddlewareChain(
 		middleware.CORSMiddleware,
 		middleware.RequestLoggerMiddleware,
 	)
 
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("Server listening"))
-	})
-	mux.HandleFunc("/restart",func(w http.ResponseWriter, r *http.Request) {
-		s.RestartChan <- true
-		w.Write([]byte("Restart signal sent"))
-	})
-	
-	fs := http.FileServer(http.Dir("/app/web"))
-    mux.Handle("/admin/", http.StripPrefix("/admin", fs))
-	mux.Handle("GET /admin/config", chain(http.HandlerFunc(s.GetConfigsHandler)))
-	mux.Handle("POST /admin/config", chain(http.HandlerFunc(http.HandlerFunc(s.SaveConfigHandler))))
-	mux.Handle("GET /admin/config/endpoint", chain(http.HandlerFunc(s.GetEndpointHandler)))
-	mux.Handle("POST /admin/config/endpoint", chain(http.HandlerFunc(http.HandlerFunc(s.SetEndpointHandler))))
-	
-	for _, cfg := range cfgFile.Endpoints {
-		mux.Handle(cfg.Prefix, chain(cfg.GenerateProxyHandler()))
-	}
-	s.Mux = mux
-}
-
-func (s *Server) StartServer() error {
 	srv := &http.Server{
 		Addr:    ":" + s.Port,
-		Handler: s.Mux,
+		Handler: chain(s.Mux),
 	}
 
 	go func() {
@@ -164,7 +164,7 @@ func (s *Server) UpdateConfig(filter bson.D, update bson.D) error {
 }
 
 // DeleteConfig deletes a configuration document from MongoDB based on the provided filter
-func (s *Server) DeleteConfig(filter bson.D) ( *mongo.DeleteResult, error) {
+func (s *Server) DeleteConfig(filter bson.D) (*mongo.DeleteResult, error) {
 	collection := s.Database.Mongo.Database(s.Database.MongoDb).Collection("configurations")
 
 	result, err := collection.DeleteOne(context.TODO(), filter)

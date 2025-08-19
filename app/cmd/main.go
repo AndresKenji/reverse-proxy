@@ -2,8 +2,8 @@ package main
 
 import (
 	"context"
-	"log"
 	"github.com/AndresKenji/reverse-proxy/internal/server"
+	"log"
 )
 
 func main() {

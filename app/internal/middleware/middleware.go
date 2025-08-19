@@ -15,7 +15,7 @@ func RequestLoggerMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		next.ServeHTTP(w, r)
-		log.Printf("%s - %s %s %s %v", r.Method, r.RemoteAddr, r.URL.Path, r.Proto, time.Since(start))
+		log.Printf("[%s] %s - From: %s - %s - took: %v", r.Method, r.URL.Path, r.RemoteAddr, r.Proto, time.Since(start))
 	})
 }
 
@@ -64,8 +64,7 @@ func CORSMiddleware(next http.Handler) http.Handler {
 }
 
 var MiddlewaresList = map[string]Middleware{
-"CORS": CORSMiddleware,
-"Logger": RequestLoggerMiddleware,
-"Auth":   RequireAuthMiddleware,
+	"CORS":   CORSMiddleware,
+	"Logger": RequestLoggerMiddleware,
+	"Auth":   RequireAuthMiddleware,
 }
-
