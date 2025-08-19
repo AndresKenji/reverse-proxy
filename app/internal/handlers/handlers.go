@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"crypto/tls"
 	"io"
 	"log"
@@ -33,19 +34,9 @@ func CreateReverseProxyHandler(target string, prefix string, secure bool) http.H
 		r.Header.Set("X-Forwarded-Host", r.Host)
 		r.Host = url.Host
 
-		// Registrar la solicitud proxy
-		start := time.Now()
-		logEntry := models.LogEntry{
-			Timestamp:  time.Now().UTC(),
-			RemoteAddr: r.RemoteAddr,
-			Method:     r.Method,
-			Path:       r.URL.Path,
-			Proto:      r.Proto,
-			TargetURL:  target,
-			Duration:   time.Since(start).String(),
-		}
-		log.Println(logEntry)
-		//go util.SendLogToElasticsearch(logEntry,"api_gateway")
+		// Agregar la URL de destino al contexto de la solicitud
+		ctx := context.WithValue(r.Context(), "target_url", target)
+		r = r.WithContext(ctx)
 
 		proxy.ServeHTTP(w, r)
 	}
